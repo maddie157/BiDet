@@ -96,7 +96,7 @@ def test_net(save_folder, net, cuda, testset, transform):
             os.makedirs(save_folder)
         # dump predictions and assoc. ground truth to text file for now
         num_images = len(testset)
-        num_classes = 81
+        num_classes = 3
         all_boxes = [[[] for _ in range(num_images)]
                      for _ in range(num_classes)]
 
@@ -157,7 +157,8 @@ if __name__ == '__main__':
         cudnn.benchmark = True
     if args.weight_path.lower() != 'none'.lower():
         print("Loading weight:", args.weight_path)
-        net.load_state_dict(torch.load(args.weight_path))
+        state_dict = torch.load(args.weight_path)
+        net.load_state_dict(state_dict['weight'])
     net.eval()
     print('Finished loading model!')
 

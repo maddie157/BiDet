@@ -27,7 +27,7 @@ voc = {
 }
 
 coco = {
-    'num_classes': 81,
+    'num_classes': 3,
     'lr_steps': (40000, 80000, 200000),
     'max_iter': 400000,
     'feature_maps': [38, 19, 10, 5, 3, 1],

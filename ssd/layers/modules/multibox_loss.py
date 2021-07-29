@@ -48,6 +48,9 @@ class MultiBoxLoss(nn.Module):
         self.neg_overlap = neg_overlap
         self.variance = cfg['variance']
 
+        print("num_classes " + str(num_classes))
+        print("background_label " + str(bkg_label))
+
     def forward(self, predictions, targets):
         """Multibox Loss
         Args:

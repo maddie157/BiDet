@@ -27,6 +27,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.utils.data as data
 import argparse
+from torch.utils.tensorboard import SummaryWriter
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0, 1'
 
@@ -36,6 +37,7 @@ NMS_CONF_THRE = 0.03
 SQRT_2_PI = math.sqrt(2. * math.pi)
 GRADIENT_CLIP_NORM = 5.
 
+writer = SummaryWriter()
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
@@ -153,7 +155,9 @@ def train():
             adjust_learning_rate(optimizer, args.lr)
 
     optimizer.zero_grad()
-    criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5, False, args.cuda)
+    criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 2, True, 3, 0.5, False, args.cuda)
+
+    print("num classes: " + str(cfg['num_classes']))
 
     net.train()
 
@@ -247,17 +251,6 @@ def train():
         loss_l, loss_c = criterion(out, targets)
         loss_temp = loss_l + loss_c
 
-        # COCO dataset bug, maybe due to wrong annotations?
-        if loss_temp.item() == float("Inf"):
-            print('inf loss error!')
-            # the following code is to clear GPU memory for feature_map
-            # I don't know other better ways to do so except for BP the loss
-            loss_temp.backward()
-            net.zero_grad()
-            optimizer.zero_grad()
-            torch.cuda.empty_cache()
-            continue
-
         if PRIOR_LOSS_WEIGHT != 0.:
             loss_count = 0.
 
@@ -314,17 +307,6 @@ def train():
 
         loss = loss_l + loss_c + loss_r + loss_p
 
-        # COCO dataset bug, maybe due to wrong annotations?
-        if loss.item() == float("Inf"):
-            print('inf loss error!')
-            # the following code is to clear GPU memory for feature_map
-            # I don't know other better ways to do so except for BP the loss
-            loss.backward()
-            net.zero_grad()
-            optimizer.zero_grad()
-            torch.cuda.empty_cache()
-            continue
-
         # compute gradient and do optimizer step
         loss.backward()
         # clip gradient because binary net training is very unstable
@@ -348,10 +330,16 @@ def train():
 
         if iteration % 100 == 0:
             print('timer: %.4f sec.' % (t1 - t0))
-            print('iter:', iteration, 'loss:', round(loss.detach().cpu().item(), 4))
+            loss_value = round(loss.detach().cpu().item(), 4)
+            print('iter:', iteration, 'loss:', loss_value)
             print('conf_loss:', round(loss_c, 4), 'loc_loss:', round(loss_l, 4),
                   'reg_loss:', round(loss_r, 4), 'prior_loss:', round(loss_p, 4),
                   'lr:', lr)
+
+            writer.add_scalar('loss', loss_value, iteration)
+            writer.add_scalar('conf loss', round(loss_c, 4), iteration)
+            writer.add_scalar('reg loss', round(loss_r, 4), iteration)
+
             if args.clip_grad:
                 print('gradient norm:', grad_norm)
             torch.cuda.empty_cache()

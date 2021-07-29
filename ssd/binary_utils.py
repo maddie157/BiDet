@@ -78,6 +78,7 @@ class BinarizeConv2d(nn.Conv2d):
         else:
             input = SignSTE.apply(input)
 
+        
         subed_weight = self.weight
         if self.weight_magnitude_aware:
             self.weight_bin_tensor = subed_weight.abs(). \

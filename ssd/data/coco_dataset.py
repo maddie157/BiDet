@@ -20,6 +20,11 @@ import torchvision.transforms as transforms
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
+def read_json(path):
+    with open(path) as f:
+        d = json.load(f)
+    return d
+
 
 class BaseTransformTesting(object):
     """Defines the transformations that should be applied to test PIL image
@@ -87,14 +92,11 @@ class COCODetectionTesting(data.Dataset):
         }
 
         for (year, image_set) in image_sets:
-            coco_name = image_set + year
-            data_name = (self._view_map[coco_name]
-                         if coco_name in self._view_map
-                         else coco_name)
-            annofile = self._get_ann_file(coco_name)
+            annofile = self._get_ann_file()
             _COCO = COCO(annofile)
+            images = read_json(annofile)['images']
             self._COCO = _COCO
-            self.coco_name = coco_name
+            self.coco_name = "test"
             cats = _COCO.loadCats(_COCO.getCatIds())
             self._classes = tuple(['__background__'] + [c['name'] for c in cats])
             self.num_classes = len(self._classes)
@@ -103,37 +105,14 @@ class COCODetectionTesting(data.Dataset):
                                                   _COCO.getCatIds()))
             indexes = _COCO.getImgIds()
             self.image_indexes = indexes
-            self.ids.extend([self.image_path_from_index(data_name, index) for index in indexes])
+            self.ids.extend([os.path.join(self.root, 'images', img['file_name']) for img in images])
             if image_set.find('test') != -1:
                 print('test set will not load annotations!')
             else:
-                self.annotations.extend(self._load_coco_annotations(coco_name, indexes, _COCO))
+                self.annotations.extend(self._load_coco_annotations(self.coco_name, indexes, _COCO))
 
-    def image_path_from_index(self, name, index):
-        """
-        Construct an image path from the image's "index" identifier.
-        """
-        # Example image path for index=119993:
-        #   images/train2014/COCO_train2014_000000119993.jpg
-        if '2014' in name or '2015' in name:
-            file_name = ('COCO_' + name + '_' +
-                         str(index).zfill(12) + '.jpg')
-            image_path = os.path.join(self.root, 'images',
-                                      name, file_name)
-            assert os.path.exists(image_path), \
-                'Path does not exist: {}'.format(image_path)
-        if '2017' in name:
-            file_name = str(index).zfill(12) + '.jpg'
-            image_path = os.path.join(self.root, name, file_name)
-            assert os.path.exists(image_path), \
-                'Path does not exist: {}'.format(image_path)
-        return image_path
-
-    def _get_ann_file(self, name):
-        prefix = 'instances' if name.find('test') == -1 \
-            else 'image_info'
-        return os.path.join(self.root, 'annotations',
-                            prefix + '_' + name + '.json')
+    def _get_ann_file(self):
+        return os.path.join(self.root, 'annotations.json')
 
     def _load_coco_annotations(self, coco_name, indexes, _COCO):
         cache_file = os.path.join(self.cache_path, coco_name + '_gt_roidb.pkl')
@@ -166,12 +145,13 @@ class COCODetectionTesting(data.Dataset):
         objs = _COCO.loadAnns(annIds)
         # Sanitize bboxes -- some are invalid
         valid_objs = []
+        print(objs[0])
         for obj in objs:
             x1 = np.max((0, obj['bbox'][0]))
             y1 = np.max((0, obj['bbox'][1]))
             x2 = np.min((width - 1, x1 + np.max((0, obj['bbox'][2] - 1))))
             y2 = np.min((height - 1, y1 + np.max((0, obj['bbox'][3] - 1))))
-            if obj['area'] > 0 and x2 >= x1 and y2 >= y1:
+            if x2 >= x1 and y2 >= y1:
                 obj['clean_bbox'] = [x1, y1, x2, y2]
                 valid_objs.append(obj)
         objs = valid_objs
