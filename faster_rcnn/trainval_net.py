@@ -6,6 +6,7 @@
 import random
 import numpy as np
 import torch
+import easydict
 
 SEED = 1
 
@@ -30,6 +31,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 
 from torch.utils.data.sampler import Sampler
+from torch.utils.tensorboard import SummaryWriter
 
 from lib.roi_data_layer.roidb import combined_roidb
 from lib.roi_data_layer.roibatchLoader import roibatchLoader
@@ -39,12 +41,17 @@ from lib.model.utils.net_utils import weights_normal_init, save_net, load_net, \
 
 from lib.model.faster_rcnn.bidet_resnet import bidet_resnet
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
 
+def write_to_file(file, dictionary, tabs=1):
+    for name, value in dictionary.items():
+        if isinstance(value, easydict.EasyDict):
+            file.write(("\t" * tabs) + name + ":\n")
+            write_to_file(file, value, tabs + 1)
+        else:
+            file.write(("\t" * tabs) + name + " : " + str(value) + "\n")
 
 def parse_args():
     """
@@ -90,10 +97,16 @@ def parse_args():
                         default=True, type=str2bool)
     parser.add_argument('--trans_img', dest='trans_img',
                         help='whether transpose image channels from rgb to bgr in order to fit the caffe weight',
-                        default=False, type=str2bool)
+                        default=False, type=str2bool),
     parser.add_argument('--fix_num', dest='fix_num',
                         help='number of fixed blocks in backbone',
                         default=0, type=int)
+    parser.add_argument('--visible_devices', dest='visible_devices',
+                        help='specify visible devices',
+                        default='0', type=str)
+    parser.add_argument('--name', dest='name',
+                        help='name of training run',
+                        type=str, required=True)
 
     # config optimization
     parser.add_argument('--o', dest='optimizer',
@@ -188,11 +201,17 @@ if __name__ == '__main__':
         args.imdbval_name = "voc_2007_test"
         args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]', 'MAX_NUM_GT_BOXES', '20']
     elif args.dataset == "coco":
-        args.imdb_name = "coco_2014_train+coco_2014_valminusminival"
-        args.imdbval_name = "coco_2014_minival"
+        # args.imdb_name = "coco_2014_train+coco_2014_valminusminival"
+        # args.imdbval_name = "coco_2014_minival"
+        args.imdb_name = "coco_2014_train"
+        args.imdbval_name = "coco_2014_val"
         args.set_cfgs = ['ANCHOR_SCALES', '[4, 8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]', 'MAX_NUM_GT_BOXES', '50']
     else:
         exit(-1)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.visible_devices
+
+    writer = SummaryWriter(log_dir="faster_rcnn/runs/" + args.name)
 
     args.cfg_file = "faster_rcnn/cfgs/{}_ls.yml".format(
         args.backbone) if args.large_scale else "faster_rcnn/cfgs/{}.yml".format(args.backbone)
@@ -225,9 +244,16 @@ if __name__ == '__main__':
     print('{:d} roidb entries'.format(len(roidb)))
 
     start_datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    output_dir = "./logs/" + args.dataset + "/" + args.backbone + "_IB/" + str(start_datetime) + "/"
+    output_dir = "./logs/fastercnn/" + args.backbone + "_IB/" + args.name + "/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    with open(output_dir + "config.txt", "a") as config_file:
+        config_file.write("Arguments:\n\t")
+        for name, value in vars(args).items():
+            config_file.write(name + " : " + str(value) + "\n\t")
+        config_file.write("\nConfigs:\n")
+        write_to_file(config_file, cfg)
 
     sampler_batch = sampler(train_size, args.batch_size)
 
@@ -419,6 +445,15 @@ if __name__ == '__main__':
                       "\t\t\trpn_prior %.4f, rpn_reg %.4f, head_prior %.4f, head_reg %.4f" %
                       (loss_rpn_cls, loss_rpn_box, loss_rcnn_cls, loss_rcnn_box,
                        rpn_prior_loss, rpn_reg_loss, head_prior_loss, head_reg_loss))
+
+                global_iter = (epoch - 1) * iters_per_epoch + step
+
+                writer.add_scalar('loss', loss_temp, global_iter)
+                writer.add_scalar('loss_rpn_cls', loss_rpn_cls, global_iter)
+                writer.add_scalar('loss_rpn_box', loss_rpn_box, global_iter)
+                writer.add_scalar('loss_rcnn_cls', loss_rcnn_cls, global_iter)
+                writer.add_scalar('loss_rcnn_box', loss_rcnn_box, global_iter)
+                writer.add_scalar('lr', lr, global_iter)
 
                 loss_temp = 0.
                 start = time.time()

@@ -23,6 +23,11 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from pycocotools import mask as COCOmask
 
+def read_json(path):
+    with open(path) as f:
+        d = json.load(f)
+    return d
+
 
 class coco(imdb):
     def __init__(self, image_set, year):
@@ -33,7 +38,7 @@ class coco(imdb):
         # name, paths
         self._year = year
         self._image_set = image_set
-        self._data_path = "/path/to/coco/"
+        self._data_path = "data/sugarbeet"
         # load COCO API, classes, class <-> id mappings
         self._COCO = COCO(self._get_ann_file())
         cats = self._COCO.loadCats(self._COCO.getCatIds())
@@ -45,6 +50,9 @@ class coco(imdb):
         # Default to roidb handler
         self.set_proposal_method('gt')
         self.competition_mode(False)
+
+        json = read_json(self._data_path + "/" + self._image_set + "/annotations.json")
+        self.images = {i['id'] : i['file_name'] for i in json['images']}
 
         # Some image sets are "views" (i.e. subsets) into others.
         # For example, minival2014 is a random 5000 image subset of val2014.
@@ -66,10 +74,7 @@ class coco(imdb):
         self._gt_splits = ('train', 'val', 'minival')
 
     def _get_ann_file(self):
-        prefix = 'instances' if self._image_set.find('test') == -1 \
-            else 'image_info'
-        return osp.join(self._data_path, 'annotations',
-                        prefix + '_' + self._image_set + self._year + '.json')
+        return osp.join(self._data_path, self._image_set, 'annotations.json')
 
     def _load_image_set_index(self):
         """
@@ -101,10 +106,7 @@ class coco(imdb):
         """
         # Example image path for index=119993:
         #   images/train2014/COCO_train2014_000000119993.jpg
-        file_name = ('COCO_' + self._data_name + '_' +
-                     str(index).zfill(12) + '.jpg')
-        image_path = osp.join(self._data_path, 'images',
-                              self._data_name, file_name)
+        image_path = osp.join(self._data_path, self._image_set, 'images', self.images[index])
         assert osp.exists(image_path), \
             'Path does not exist: {}'.format(image_path)
         return image_path
@@ -215,7 +217,7 @@ class coco(imdb):
         # first 14 chars / first 22 chars / all chars + .mat
         # COCO_val2014_0/COCO_val2014_000000447/COCO_val2014_000000447991.mat
         file_name = ('COCO_' + self._data_name +
-                     '_' + str(index).zfill(12) + '.mat')
+                     '_' + self.images[index-1]['file_name'] + '.mat')
         return osp.join(file_name[:14], file_name[:22], file_name)
 
     def _print_detection_eval_metrics(self, coco_eval):
