@@ -151,7 +151,7 @@ class COCODetectionTesting(data.Dataset):
             y1 = np.max((0, obj['bbox'][1]))
             x2 = np.min((width - 1, x1 + np.max((0, obj['bbox'][2] - 1))))
             y2 = np.min((height - 1, y1 + np.max((0, obj['bbox'][3] - 1))))
-            if x2 >= x1 and y2 >= y1:
+            if obj['area'] > 0 and x2 >= x1 and y2 >= y1:
                 obj['clean_bbox'] = [x1, y1, x2, y2]
                 valid_objs.append(obj)
         objs = valid_objs
@@ -320,6 +320,5 @@ class COCODetectionTesting(data.Dataset):
         res_file += '.json'
         self._write_coco_results_file(all_boxes, res_file)
         # Only do evaluation on non-test sets
-        if self.coco_name.find('test') == -1:
-            self._do_detection_eval(res_file, output_dir)
+        self._do_detection_eval(res_file, output_dir)
         # Optionally cleanup results json file

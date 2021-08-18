@@ -102,3 +102,24 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# .pth files for pretraining
+ssd/pretrain/
+faster_rcnn/pretrain/
+
+# models
+/models
+/logs
+
+# run
+faster_rcnn/runs/
+ssd/runs
+/runs
+
+# data
+/data
+ssd/data
+
+# output
+/eval
+faster_rcnn/output/

@@ -89,6 +89,8 @@ class Timer(object):
         else:
             return self.diff
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def test_net(save_folder, net, cuda, testset, transform):
     with torch.no_grad():
@@ -110,6 +112,8 @@ def test_net(save_folder, net, cuda, testset, transform):
             testset.evaluate_detections(all_boxes, save_folder)
             return
 
+        detection_times = []
+
         for i in range(num_images):
             img, h, w = testset.pull_image(i)
             x = Variable(transform(img).unsqueeze(0))
@@ -119,6 +123,7 @@ def test_net(save_folder, net, cuda, testset, transform):
             _t['im_detect'].tic()
             detections = net(x).data  # [1, class, top_k, 5]
             detect_time = _t['im_detect'].toc(average=False)
+            detection_times.append(detect_time)
 
             # skip j = 0, because it's the background class
             for j in range(1, detections.size(1)):
@@ -137,10 +142,12 @@ def test_net(save_folder, net, cuda, testset, transform):
                                       scores[:, np.newaxis])).astype(np.float32, copy=False)
                 all_boxes[j][i] = cls_dets
 
-            print('im_detect: {:d}/{:d} {:.3f}s'.format(i + 1, num_images, detect_time), end='\r')
+            print('im_detect: {:d}/{:d} {:.2f}s'.format(i + 1, num_images, detect_time), end='\r')
 
         with open(det_file, 'wb') as f:
             pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
+
+        print('Detection time: {:.2f} FPS'.format(1 / np.mean(detection_times)))
 
         print('Evaluating detections')
         testset.evaluate_detections(all_boxes, save_folder)
@@ -162,10 +169,17 @@ if __name__ == '__main__':
     net.eval()
     print('Finished loading model!')
 
+    params = count_parameters(net)
+    size = (params/8 + params/8) / (1024 ** 2)
+
+    print('Model size: {:.3f}MB'.format(size))
+
+
     # load data
     testset = COCODetectionTesting(args.coco_root, [('2014', 'minival')], None)
 
     # evaluation
     save_folder = os.path.join(args.save_folder, 'coco')
     test_net(save_folder, net, args.cuda, testset,
-             BaseTransformTesting(300, rgb_means=(123, 117, 104), rgb_std=(1, 1, 1), swap=(2, 0, 1)))
+                        BaseTransformTesting(300, rgb_means=(123, 117, 104), rgb_std=(1, 1, 1), swap=(2, 0, 1)))
+    

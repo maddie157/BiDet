@@ -37,7 +37,7 @@ NMS_CONF_THRE = 0.03
 SQRT_2_PI = math.sqrt(2. * math.pi)
 GRADIENT_CLIP_NORM = 5.
 
-writer = SummaryWriter()
+writer = SummaryWriter(log_dir="ssd/runs/exp4")
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
@@ -84,6 +84,10 @@ parser.add_argument('--opt', default='Adam', type=str,
                     help='Optimizer for training the network')
 parser.add_argument('--clip_grad', default=False, type=str2bool,
                     help='whether to clip gradient when training')
+parser.add_argument('--visible_devices', default='0', type=str,
+                    help='specify visible devices')
+parser.add_argument('--name', type=str, required=True,
+                    help='name of training run')
 args = parser.parse_args()
 
 if torch.cuda.is_available():
@@ -97,7 +101,7 @@ else:
     torch.set_default_tensor_type('torch.FloatTensor')
 
 start_datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-logs_dir = os.path.join('logs', args.dataset, str(start_datetime))
+logs_dir = os.path.join('logs', 'ssd', str(start_datetime))
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir)
@@ -339,6 +343,7 @@ def train():
             writer.add_scalar('loss', loss_value, iteration)
             writer.add_scalar('conf loss', round(loss_c, 4), iteration)
             writer.add_scalar('reg loss', round(loss_r, 4), iteration)
+            writer.add_scalar('lr', lr, iteration)
 
             if args.clip_grad:
                 print('gradient norm:', grad_norm)
