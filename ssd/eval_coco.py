@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
 
     # load data
-    testset = COCODetectionTesting(args.coco_root, [('2014', 'minival')], None)
+    testset = COCODetectionTesting(args.coco_root, None)
 
     # evaluation
     save_folder = os.path.join(args.save_folder, 'coco')

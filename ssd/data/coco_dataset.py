@@ -75,41 +75,31 @@ class COCODetectionTesting(data.Dataset):
             (default: 'VOC2007')
     """
 
-    def __init__(self, root, image_sets, preproc=None, target_transform=None,
+    def __init__(self, root, preproc=None, target_transform=None,
                  dataset_name='COCO'):
         self.root = root
         self.cache_path = os.path.join(self.root, 'cache')
-        self.image_set = image_sets
         self.preproc = preproc
         self.target_transform = target_transform
         self.name = dataset_name
         self.ids = list()
         self.annotations = list()
-        self._view_map = {
-            'minival2014': 'val2014',  # 5k val2014 subset
-            'valminusminival2014': 'val2014',  # val2014 \setminus minival2014
-            'test-dev2015': 'test2015',
-        }
 
-        for (year, image_set) in image_sets:
-            annofile = self._get_ann_file()
-            _COCO = COCO(annofile)
-            images = read_json(annofile)['images']
-            self._COCO = _COCO
-            self.coco_name = "test"
-            cats = _COCO.loadCats(_COCO.getCatIds())
-            self._classes = tuple(['__background__'] + [c['name'] for c in cats])
-            self.num_classes = len(self._classes)
-            self._class_to_ind = dict(zip(self._classes, range(self.num_classes)))
-            self._class_to_coco_cat_id = dict(zip([c['name'] for c in cats],
-                                                  _COCO.getCatIds()))
-            indexes = _COCO.getImgIds()
-            self.image_indexes = indexes
-            self.ids.extend([os.path.join(self.root, 'images', img['file_name']) for img in images])
-            if image_set.find('test') != -1:
-                print('test set will not load annotations!')
-            else:
-                self.annotations.extend(self._load_coco_annotations(self.coco_name, indexes, _COCO))
+        annofile = self._get_ann_file()
+        _COCO = COCO(annofile)
+        images = read_json(annofile)['images']
+        self._COCO = _COCO
+        self.coco_name = "belgium"
+        cats = _COCO.loadCats(_COCO.getCatIds())
+        self._classes = tuple(['__background__'] + [c['name'] for c in cats])
+        self.num_classes = len(self._classes)
+        self._class_to_ind = dict(zip(self._classes, range(self.num_classes)))
+        self._class_to_coco_cat_id = dict(zip([c['name'] for c in cats],
+                                                _COCO.getCatIds()))
+        indexes = _COCO.getImgIds()
+        self.image_indexes = indexes
+        self.ids.extend([os.path.join(self.root, 'images', img['file_name']) for img in images])
+        self.annotations.extend(self._load_coco_annotations(self.coco_name, indexes, _COCO))
 
     def _get_ann_file(self):
         return os.path.join(self.root, 'annotations.json')
