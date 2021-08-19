@@ -4,6 +4,7 @@ from __future__ import print_function
 
 from lib.model.utils.config import cfg
 from lib.model.faster_rcnn.faster_rcnn import _fasterRCNN_BiDet
+from lib.model.faster_rcnn.bireal_50 import birealnet50
 import lib.model.faster_rcnn.binary_utils as b_utils
 
 import torch
@@ -170,6 +171,8 @@ class bidet_resnet(_fasterRCNN_BiDet):
         self.fix_base_bn = fix_base_bn
         self.fix_top_bn = fix_top_bn
 
+        print(self.model_path)
+
         _fasterRCNN_BiDet.__init__(self, classes, class_agnostic, sample_sigma=sample_sigma,
                                    nms_threshold=nms_threshold,
                                    rpn_prior_weight=rpn_prior_weight, rpn_reg_weight=rpn_reg_weight,
@@ -181,13 +184,15 @@ class bidet_resnet(_fasterRCNN_BiDet):
             resnet = bidetnet18()
         elif self.depth == 34:
             resnet = bidetnet34()
+        elif self.depth == 50:
+            resnet = birealnet50()
         else:
             exit(-1)
 
-        if self.model_path is not None:
-            print("Loading pretrained weights from %s" % self.model_path)
-            state_dict = torch.load(self.model_path)
-            resnet.load_state_dict(state_dict, strict=True)
+        # if self.model_path is not None:
+        #     print("Loading pretrained weights from %s" % self.model_path)
+        #     state_dict = torch.load(self.model_path)
+        #     resnet.load_state_dict(state_dict, strict=True)
 
         # Build resnet
         self.RCNN_base = nn.Sequential(resnet.conv1, resnet.bn1, resnet.maxpool,

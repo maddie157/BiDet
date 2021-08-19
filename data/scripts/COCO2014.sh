@@ -6,9 +6,8 @@ start=`date +%s`
 if [ -z "$1" ]
   then
     # navigate to ~/data
-    echo "navigating to ~/data/ ..."
-    mkdir -p ~/data
-    cd ~/data/
+    echo "navigating to ~/datasets/ ..."
+    cd ~/datasets/
     mkdir -p ./coco
     cd ./coco
     mkdir -p ./images
@@ -31,9 +30,9 @@ fi
 # Download the image data.
 cd ./images
 echo "Downloading MSCOCO train images ..."
-# curl -LO http://images.cocodataset.org/zips/train2014.zip
+curl -LO http://images.cocodataset.org/zips/train2014.zip
 echo "Downloading MSCOCO val images ..."
-# curl -LO http://images.cocodataset.org/zips/val2014.zip
+curl -LO http://images.cocodataset.org/zips/val2014.zip
 
 cd ../
 if [ ! -d annotations]
@@ -44,7 +43,7 @@ fi
 # Download the annotation data.
 cd ./annotations
 echo "Downloading MSCOCO train/val annotations ..."
-# curl -LO http://images.cocodataset.org/annotations/annotations_trainval2014.zip
+curl -LO http://images.cocodataset.org/annotations/annotations_trainval2014.zip
 echo "Finished downloading. Now extracting ..."
 
 # Unzip data
@@ -64,7 +63,7 @@ echo "Creating trainval35k dataset..."
 
 # Download annotations json
 echo "Downloading trainval35k annotations from S3"
-# curl -LO https://s3.amazonaws.com/amdegroot-datasets/instances_trainval35k.json.zip
+curl -LO https://s3.amazonaws.com/amdegroot-datasets/instances_trainval35k.json.zip
 
 # combine train and val 
 echo "Combining train and val images"

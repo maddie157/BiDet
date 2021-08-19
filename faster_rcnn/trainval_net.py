@@ -300,6 +300,11 @@ if __name__ == '__main__':
                                   fix_real_conv=True, fix_base_bn=False, fix_top_bn=False,
                                   rpn_prior_weight=args.rpn_prior_weight, rpn_reg_weight=args.rpn_reg_weight,
                                   head_prior_weight=args.head_prior_weight, head_reg_weight=args.head_reg_weight)
+    elif args.backbone == 'bidet50':
+        fasterRCNN = bidet_resnet(imdb.classes, 50, class_agnostic=args.class_agnostic, model_path=None, nms_threshold=args.nms_threshold,
+                                  sample_sigma=args.sample_sigma, fix_real_conv=True, fix_base_bn=False, fix_top_bn=False,
+                                  rpn_prior_weight=args.rpn_prior_weight, rpn_reg_weight=args.rpn_reg_weight,
+                                  head_prior_weight=args.head_prior_weight, head_reg_weight=args.head_reg_weight)
     else:
         print("network is not defined")
         exit(-1)
@@ -416,6 +421,7 @@ if __name__ == '__main__':
 
             # compute gradient and do SGD step
             optimizer.zero_grad()
+            torch.cuda.empty_cache()
             loss.backward()
             optimizer.step()
 
